@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>tdms2hdf2</name>
+  </assembly>
+  <members>
+    <member name="M:tdms2hdf2.LabVIEWExports.tdms2hdf2(NationalInstruments.LabVIEW.Interop.LVPath,System.String@)">
+      <summary></summary>
+      <returns>Void</returns>
+    </member>
+    <member name="M:tdms2hdf2.LabVIEWExports.tdms2hdf3(NationalInstruments.LabVIEW.Interop.LVPath,NationalInstruments.LabVIEW.Interop.ErrorCluster@)">
+      <summary></summary>
+      <returns>Void</returns>
+    </member>
+  </members>
+</doc>

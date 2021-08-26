@@ -371,7 +371,7 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
     _delete_tmp_tdms_file(tmp_hdf_path)
 
     if type(hdfpath) == str:
-        hdfpath = hdfpath.encode('gbk')
+        hdfpath_ = hdfpath.encode('gbk')
 
     # -------------------------- 动态链接库调用--------------------------------#
     print('2')
@@ -384,10 +384,11 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
     # converthdf= WinDLL(path_convert)
 
     # 创建C语言数据类型进行输入 bytes 类型
-    len_ifn = len(hdfpath) + 512  # 输入 char source_input[] C语言类型
+    len_ifn = len(hdfpath_) + 512  # 输入 char source_input[] C语言类型
     ifn = ctypes.create_string_buffer(len_ifn)
-    ifn.raw = hdfpath
+    ifn.raw = hdfpath_
     print('3')
+    print('hdfpath_:',hdfpath_)
     # 输出 char path_out[], # C语言类型为文件路径输入端分配内存
     len_ofn = len_ifn
     ofn = ctypes.create_string_buffer(len_ofn)
@@ -419,7 +420,7 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
     # filename = filename.decode('utf-8')
     # print("filename.decode('utf-8'):",filename)
     srcfilename = filename.decode('gbk')
-    # print(filename)
+    print('srcfilename:',srcfilename)
     # try:
     #     path = os.unicode(filename, 'utf-8') # 经过编码处理
     # except:
@@ -432,8 +433,8 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
     # attribution, rawdata = pytdms.read(filename)  # obj 头文件，数据rawdata
     #  如果需要的化，保存元信息_用于后面保存为hdf 未见
     # rawMetaData = TdmsFile.read_metadata(filename)  # obj 头文件，数据rawdata
-    # if type(hdfpath) == byte:
-    hdfpath = hdfpath.decode('gbk')
+    if type(hdfpath) == bytes:
+        hdfpath = hdfpath.decode('gbk')
 
     dstPath = hdfpath[:-4] + '.tdms'
     print(dstPath)
@@ -445,7 +446,7 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
         except:
             pass
 
-    print(srcfilename)
+    # print(srcfilename)
 
     # rename test.tdms to destination file name
     if os.path.isfile(srcfilename):
@@ -458,7 +459,7 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
         print('no tdms file')
     print('3')
     # del test.tdms
-    # _delete_tmp_tdms_file(tmp_hdf_path)
+    _delete_tmp_tdms_file(tmp_hdf_path)
 
     # move new tdms files to tdmspath
     # if tdms_folder is not None:
@@ -583,9 +584,10 @@ if __name__ == '__main__':
     run_code = 1
 
     if run_code == 1:
-        hdf_file = r'E:\01_SQL\AAAWORK\database\2020-07-23_B89-001 P ohneAC CS_02.hdf'
+        # hdf_file = r'E:\01_SQL\AAAWORK\database\2020-07-23_B89-001 P ohneAC CS_02.hdf'
 
+        hdf_file = r'E:\h5_files\2017-03-31_D65 F4 VZ run02.hdf'
         hdf_file = r'E:\h5_files\2020-07-23_B89-001 P ohneAC CS_02.hdf'
         # trans_hdf_2_h5_file
-        # trans_hdf_2_tdms(hdf_file)
-        trans_hdf_2_h5_file(hdf_file)
+        trans_hdf_2_tdms(hdf_file)
+        # trans_hdf_2_h5_file(hdf_file)

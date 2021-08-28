@@ -313,6 +313,7 @@ class Waveform:
 
 def _delete_tmp_tdms_file(hdfpath):
     folder_path, filename = os.path.split(hdfpath)
+
     test_tdms_path = folder_path + '/' + 'test.tdms'
     test_tdms_index_path = folder_path + '/' + 'test.tdms_index'
 
@@ -336,7 +337,7 @@ def _delete_tmp_tdms_file(hdfpath):
     return op_log
 
 
-def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
+def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000,encoding='utf-8'):
     """
 
 
@@ -357,7 +358,9 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
     rawdata : tuple
         DESCRIPTION.
         """
-
+    version = 'dll_convert_hdf_v4.dll'
+    if encoding=='utf8':
+        encoding='utf-8'
     # ---------------------------数据格式check---------------------------------#
     # try:
     #     hdfpath = os.unicode(hdfpath, 'utf-8') # 经过编码处理
@@ -371,14 +374,22 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
     _delete_tmp_tdms_file(tmp_hdf_path)
 
     if type(hdfpath) == str:
-        hdfpath_ = hdfpath.encode('gbk')
+        hdfpath_ = '\\'.join(hdfpath.split('/'))
+        if encoding=='gbk':
+            hdfpath_ = hdfpath_.encode('gbk')
+        else:
+            hdfpath_ = hdfpath_.encode('utf-8')
 
     # -------------------------- 动态链接库调用--------------------------------#
     print('2')
     # 加载dll动态链接库函数
-    path_convert = r"dll_convert_hdf_v3.dll"
+
+    if version == 'dll_convert_hdf_v4.dll':
+        path_convert = r"dll_convert_hdf_v4.dll"
+    elif version == 'dll_convert_hdf_v3.dll':
+        path_convert = r"dll_convert_hdf_v3.dll"
     path_pre = os.path.dirname(__file__)
-    path_convert = path_pre + '/' + path_convert
+    path_convert = path_pre + r'/' + path_convert
 
     converthdf = ctypes.CDLL(path_convert)
     # converthdf= WinDLL(path_convert)
@@ -400,6 +411,332 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
 
     ##↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ ----- 动态链接库调用 ----- ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓##
     start = time.time()
+
+    # 调用dll函数,并计算时间
+    '''DLL_hdf_convert(char source_input[], 
+        int64_t data_mini_batch_size, char path_out[], char ErrorStatus[], 
+        int32_t len_path_out, int32_t len_Err_Status);'''
+    if version == 'dll_convert_hdf_v4.dll':
+        Enum_gbkCode = ctypes.c_uint16(1)
+        Enum_utf8Code = ctypes.c_uint16(0)
+        if encoding == 'gbk':
+            code_enum = Enum_gbkCode
+        else:
+            code_enum = Enum_utf8Code
+        converthdf.DLL_hdf_convert_v4(ifn, ctypes.pointer(code_enum), data_batch_size, ofn, err_code, len_ofn, 256)
+    elif version == 'dll_convert_hdf_v3.dll':
+        converthdf.DLL_hdf_convert(
+            ifn, data_batch_size, ofn, err_code, len_ofn, 256)
+
+    end = time.time()
+    print('convert cost time:', end - start)
+    ##↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ ----- 动态链接库调用 ----- ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑##
+
+    Error_status = err_code.value  # 读取错误状态码
+    print('Error:', str(Error_status))
+    filename = ofn.value  # 读取tdms 数据
+    print('ofn.value:', filename)
+
+    # filename = filename.decode('utf-8')
+    # print("filename.decode('utf-8'):",filename)
+    if encoding == 'gbk':
+        srcfilename = filename.decode('gbk')
+    else:
+        srcfilename = filename.decode('utf-8')
+
+    tdms_index_fn=srcfilename[:-4]+'tdms_index'
+
+    print('srcfilename:',srcfilename)
+    # if .tdms already exsit, delet it first
+    if os.path.isfile(tdms_index_fn):
+        try:
+            os.remove(tdms_index_fn)
+        except:
+            pass
+
+
+
+    # -----------------------  读取临时文件数据到内存 ------------------------#
+
+    # attribution, rawdata = pytdms.read(filename)  # obj 头文件，数据rawdata
+    #  如果需要的化，保存元信息_用于后面保存为hdf 未见
+    # rawMetaData = TdmsFile.read_metadata(filename)  # obj 头文件，数据rawdata
+    if type(hdfpath) == bytes:
+        if encoding == 'gbk':
+            hdfpath = hdfpath.decode('gbk')
+        else:
+            hdfpath = hdfpath.decode('utf-8')
+
+
+    dstPath = hdfpath[:-4] + '.tdms'
+    print(dstPath)
+
+    # if .tdms already exsit, delet it first
+    if os.path.isfile(dstPath):
+        try:
+            # os.remove(dstPath)
+            pass
+        except:
+            pass
+
+    # print(srcfilename)
+
+    # rename test.tdms to destination file name
+    # if os.path.isfile(srcfilename):
+    #     try:
+    #         os.rename(srcfilename, dstPath)
+    #     except:
+    #         print('%s not exsit', dstPath)
+    #         pass
+    # else:
+    #     print('no tdms file')
+    print('end')
+    # del test.tdms
+    # _delete_tmp_tdms_file(tmp_hdf_path)
+
+    # move new tdms files to tdmspath
+    # if tdms_folder is not None:
+    #     print('--' * 10)
+    #     if os.path.isdir(tdms_folder):
+    #         try:
+    #             shutil.copy(dstPath, tdms_folder)
+    #             os.remove(dstPath)
+    #         except IOError as e:
+    #             print("Unable to copy file. %s" % e)
+    #         except:
+    #             print("Unexpected error:", sys.exc_info())
+
+    return dstPath
+
+def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000,encoding='utf-8'):
+    """
+
+
+    Parameters
+    ----------
+    hdfpath : TYPE
+        DESCRIPTION.
+    data_batch_size : TYPE
+        转化时处理的数据块size大小，硬件内存小的时候小，硬件内润大的时候使用大,默认
+        推荐 10000000
+
+    Returns
+    -------
+    Error_status : str
+        DESCRIPTION.
+    attribution : tuple
+        DESCRIPTION.
+    rawdata : tuple
+        DESCRIPTION.
+        """
+    version = 'dll_convert_hdf_v4.dll'
+    if encoding=='utf8':
+        encoding='utf-8'
+    # ---------------------------数据格式check---------------------------------#
+    # try:
+    #     hdfpath = os.unicode(hdfpath, 'utf-8') # 经过编码处理
+    # except:
+    #     pass # python3 已经移除 unicode，而且默认是 utf8 编码，所以不用转
+    # # os.listdir(hdfpath)
+    print('trans_hdf_2_tdms')
+    # pre_delete the test.tdms file
+    print('1')
+    tmp_hdf_path = hdfpath
+    _delete_tmp_tdms_file(tmp_hdf_path)
+
+    if type(hdfpath) == str:
+        hdfpath_ = '\\'.join(hdfpath.split('/'))
+        if encoding=='gbk':
+            hdfpath_ = hdfpath_.encode('gbk')
+        else:
+            hdfpath_ = hdfpath_.encode('utf-8')
+
+    # -------------------------- 动态链接库调用--------------------------------#
+    print('2')
+    # 加载dll动态链接库函数
+
+    if version == 'dll_convert_hdf_v4.dll':
+        path_convert = r"dll_convert_hdf_v4.dll"
+    elif version == 'dll_convert_hdf_v3.dll':
+        path_convert = r"dll_convert_hdf_v3.dll"
+    path_pre = os.path.dirname(__file__)
+    path_convert = path_pre + r'/' + path_convert
+
+    converthdf = ctypes.CDLL(path_convert)
+    # converthdf= WinDLL(path_convert)
+
+    # 创建C语言数据类型进行输入 bytes 类型
+    len_ifn = len(hdfpath_) + 512  # 输入 char source_input[] C语言类型
+    ifn = ctypes.create_string_buffer(len_ifn)
+    ifn.raw = hdfpath_
+    print('3')
+    print('hdfpath_:',hdfpath_)
+    # 输出 char path_out[], # C语言类型为文件路径输入端分配内存
+    len_ofn = len_ifn
+    ofn = ctypes.create_string_buffer(len_ofn)
+
+    # char ErrorStatus[]
+    err_code = ctypes.create_string_buffer(256)
+
+    # remove test.tdms before generate tdms
+
+    ##↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ ----- 动态链接库调用 ----- ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓##
+    start = time.time()
+
+    # 调用dll函数,并计算时间
+    '''DLL_hdf_convert(char source_input[], 
+        int64_t data_mini_batch_size, char path_out[], char ErrorStatus[], 
+        int32_t len_path_out, int32_t len_Err_Status);'''
+    if version == 'dll_convert_hdf_v4.dll':
+        Enum_gbkCode = ctypes.c_uint16(1)
+        Enum_utf8Code = ctypes.c_uint16(0)
+        if encoding == 'gbk':
+            code_enum = Enum_gbkCode
+        else:
+            code_enum = Enum_utf8Code
+        converthdf.DLL_hdf_convert_v4(ifn, ctypes.pointer(code_enum), data_batch_size, ofn, err_code, len_ofn, 256)
+    elif version == 'dll_convert_hdf_v3.dll':
+        converthdf.DLL_hdf_convert(
+            ifn, data_batch_size, ofn, err_code, len_ofn, 256)
+
+    end = time.time()
+    print('convert cost time:', end - start)
+    ##↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ ----- 动态链接库调用 ----- ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑##
+
+    Error_status = err_code.value  # 读取错误状态码
+    print('Error:', str(Error_status))
+    filename = ofn.value  # 读取tdms 数据
+    print('ofn.value:', filename)
+
+    # filename = filename.decode('utf-8')
+    # print("filename.decode('utf-8'):",filename)
+    if encoding == 'gbk':
+        srcfilename = filename.decode('gbk')
+    else:
+        srcfilename = filename.decode('utf-8')
+
+    tdms_index_fn=srcfilename[:-4]+'tdms_index'
+
+    print('srcfilename:',srcfilename)
+    # if .tdms already exsit, delet it first
+    if os.path.isfile(tdms_index_fn):
+        try:
+            os.remove(tdms_index_fn)
+        except:
+            pass
+
+
+
+    # -----------------------  读取临时文件数据到内存 ------------------------#
+
+    # attribution, rawdata = pytdms.read(filename)  # obj 头文件，数据rawdata
+    #  如果需要的化，保存元信息_用于后面保存为hdf 未见
+    # rawMetaData = TdmsFile.read_metadata(filename)  # obj 头文件，数据rawdata
+    if type(hdfpath) == bytes:
+        if encoding == 'gbk':
+            hdfpath = hdfpath.decode('gbk')
+        else:
+            hdfpath = hdfpath.decode('utf-8')
+
+
+    dstPath = hdfpath[:-4] + '.tdms'
+    print(dstPath)
+
+    # if .tdms already exsit, delet it first
+    if os.path.isfile(dstPath):
+        try:
+            # os.remove(dstPath)
+            pass
+        except:
+            pass
+
+    # print(srcfilename)
+
+    # rename test.tdms to destination file name
+    # if os.path.isfile(srcfilename):
+    #     try:
+    #         os.rename(srcfilename, dstPath)
+    #     except:
+    #         print('%s not exsit', dstPath)
+    #         pass
+    # else:
+    #     print('no tdms file')
+    print('end')
+    # del test.tdms
+    # _delete_tmp_tdms_file(tmp_hdf_path)
+
+    # move new tdms files to tdmspath
+    # if tdms_folder is not None:
+    #     print('--' * 10)
+    #     if os.path.isdir(tdms_folder):
+    #         try:
+    #             shutil.copy(dstPath, tdms_folder)
+    #             os.remove(dstPath)
+    #         except IOError as e:
+    #             print("Unable to copy file. %s" % e)
+    #         except:
+    #             print("Unexpected error:", sys.exc_info())
+
+    return dstPath
+
+def _trans_hdf_2_tdms_v3(hdfpath, tdms_folder=None, data_batch_size=10000000,encoding='utf-8'):
+    """
+    this is a back for 'dll_convert_hdf_v3.dll' files
+
+
+    Parameters
+    ----------
+    hdfpath : TYPE
+        DESCRIPTION.
+    data_batch_size : TYPE
+        转化时处理的数据块size大小，硬件内存小的时候小，硬件内润大的时候使用大,默认
+        推荐 10000000
+
+    Returns
+    -------
+    Error_status : str
+        DESCRIPTION.
+    attribution : tuple
+        DESCRIPTION.
+    rawdata : tuple
+        DESCRIPTION.
+        """
+    # ---------------------------数据格式check---------------------------------#
+
+    # pre_delete the test.tdms file
+    tmp_hdf_path = hdfpath
+    _delete_tmp_tdms_file(tmp_hdf_path)
+
+    if type(hdfpath) == str:
+        hdfpath_ = '\\'.join(hdfpath.split('/'))
+        hdfpath_ = hdfpath_.encode('utf-8')     # dll v3 version use utf-8 as input bytes string
+
+    # -------------------------- 动态链接库调用--------------------------------#
+    # 加载dll动态链接库函数
+
+    path_convert = r"dll_convert_hdf_v3.dll"
+    path_pre = os.path.dirname(__file__)
+    path_convert = path_pre + r'/' + path_convert
+
+    converthdf = ctypes.CDLL(path_convert)
+    # converthdf= WinDLL(path_convert)
+
+    # 创建C语言数据类型进行输入 bytes 类型
+    len_ifn = len(hdfpath_) + 512  # 输入 char source_input[] C语言类型
+    ifn = ctypes.create_string_buffer(len_ifn)
+    ifn.raw = hdfpath_
+    print('hdfpath_:',hdfpath_)
+    # 输出 char path_out[], # C语言类型为文件路径输入端分配内存
+    len_ofn = len_ifn
+    ofn = ctypes.create_string_buffer(len_ofn)
+    # char ErrorStatus[]
+    err_code = ctypes.create_string_buffer(256)
+
+    # remove test.tdms before generate tdms
+
+    ##↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ ----- 动态链接库调用 ----- ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓##
+    start = time.time()
+
     # 调用dll函数,并计算时间
     '''DLL_hdf_convert(char source_input[], 
         int64_t data_mini_batch_size, char path_out[], char ErrorStatus[], 
@@ -419,23 +756,11 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
 
     # filename = filename.decode('utf-8')
     # print("filename.decode('utf-8'):",filename)
-    srcfilename = filename.decode('gbk')
+
+    srcfilename = filename.decode('utf-8')
     print('srcfilename:',srcfilename)
-    # try:
-    #     path = os.unicode(filename, 'utf-8') # 经过编码处理
-    # except:
-    #     pass # python3 已经移除 unicode，而且默认是 utf8 编码，所以不用转
 
-    # print("filename.unicode('utf-8'):",filename)
-
-    # -----------------------  读取临时文件数据到内存 ------------------------#
-
-    # attribution, rawdata = pytdms.read(filename)  # obj 头文件，数据rawdata
-    #  如果需要的化，保存元信息_用于后面保存为hdf 未见
-    # rawMetaData = TdmsFile.read_metadata(filename)  # obj 头文件，数据rawdata
-    if type(hdfpath) == bytes:
-        hdfpath = hdfpath.decode('gbk')
-
+    # 保存的tdms文件路径
     dstPath = hdfpath[:-4] + '.tdms'
     print(dstPath)
 
@@ -446,8 +771,6 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
         except:
             pass
 
-    # print(srcfilename)
-
     # rename test.tdms to destination file name
     if os.path.isfile(srcfilename):
         try:
@@ -457,21 +780,23 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000):
             pass
     else:
         print('no tdms file')
-    print('3')
-    # del test.tdms
+
+    # del test.tdms and test.tdms_index
     _delete_tmp_tdms_file(tmp_hdf_path)
 
-    # move new tdms files to tdmspath
-    # if tdms_folder is not None:
-    #     print('--' * 10)
-    #     if os.path.isdir(tdms_folder):
-    #         try:
-    #             shutil.copy(dstPath, tdms_folder)
-    #             os.remove(dstPath)
-    #         except IOError as e:
-    #             print("Unable to copy file. %s" % e)
-    #         except:
-    #             print("Unexpected error:", sys.exc_info())
+    # move new tdms files to tdmspath if nessersary
+    if tdms_folder is not None:
+        print('--' * 10)
+        if os.path.isdir(tdms_folder):
+            try:
+                shutil.copy(dstPath, tdms_folder)
+                os.remove(dstPath)
+                fp,fn = os.path.split(dstPath)
+                dstPath = tdms_folder + '/' + fn
+            except IOError as e:
+                print("Unable to copy file. %s" % e)
+            except:
+                print("Unexpected error:", sys.exc_info())
 
     return dstPath
 
@@ -497,6 +822,7 @@ def trans_hdf_2_h5_file(hdf_path, h5_path=None, keep_tdms=False):
     print(tdmsFileInst)
     print('2')
     h5FileObj = TdmsFile(tdmsFileInst)  # read the tdms obj
+    # TdmsFile.
     print('3')
     h5filepath = tdmsFileInst[:-5] + '.h5'
     h5FileObj.as_hdf(tdmsFileInst[:-5] + '.h5')  # trans tdms to hdf
@@ -587,7 +913,12 @@ if __name__ == '__main__':
         # hdf_file = r'E:\01_SQL\AAAWORK\database\2020-07-23_B89-001 P ohneAC CS_02.hdf'
 
         hdf_file = r'E:\h5_files\2017-03-31_D65 F4 VZ run02.hdf'
-        hdf_file = r'E:\h5_files\2020-07-23_B89-001 P ohneAC CS_02.hdf'
+        hdf_file = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
+        hdf_file = r'E:/h5_files/2020_test_中文13打飞机0.hdf'
+        hdf_file =r'E:/h5_files/2017-03-31_D65 F4 VZ run02.hdf'
+        print('hdf_file:',hdf_file)
+
         # trans_hdf_2_h5_file
-        trans_hdf_2_tdms(hdf_file)
+        # _trans_hdf_2_tdms_v3(hdf_file)
+        _trans_hdf_2_tdms_v4(hdf_file,encoding='gbk')
         # trans_hdf_2_h5_file(hdf_file)

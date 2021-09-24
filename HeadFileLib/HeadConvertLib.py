@@ -337,7 +337,7 @@ def _delete_tmp_tdms_file(hdfpath):
     return op_log
 
 
-def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000,encoding='utf-8'):
+def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000, encoding='utf-8'):
     """
 
 
@@ -359,8 +359,8 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000,encodin
         DESCRIPTION.
         """
     version = 'dll_convert_hdf_v4.dll'
-    if encoding=='utf8':
-        encoding='utf-8'
+    if encoding == 'utf8':
+        encoding = 'utf-8'
     # ---------------------------数据格式check---------------------------------#
     # try:
     #     hdfpath = os.unicode(hdfpath, 'utf-8') # 经过编码处理
@@ -375,7 +375,7 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000,encodin
 
     if type(hdfpath) == str:
         hdfpath_ = '\\'.join(hdfpath.split('/'))
-        if encoding=='gbk':
+        if encoding == 'gbk':
             hdfpath_ = hdfpath_.encode('gbk')
         else:
             hdfpath_ = hdfpath_.encode('utf-8')
@@ -399,7 +399,7 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000,encodin
     ifn = ctypes.create_string_buffer(len_ifn)
     ifn.raw = hdfpath_
     print('3')
-    print('hdfpath_:',hdfpath_)
+    print('hdfpath_:', hdfpath_)
     # 输出 char path_out[], # C语言类型为文件路径输入端分配内存
     len_ofn = len_ifn
     ofn = ctypes.create_string_buffer(len_ofn)
@@ -444,17 +444,15 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000,encodin
     else:
         srcfilename = filename.decode('utf-8')
 
-    tdms_index_fn=srcfilename[:-4]+'tdms_index'
+    tdms_index_fn = srcfilename[:-4] + 'tdms_index'
 
-    print('srcfilename:',srcfilename)
+    print('srcfilename:', srcfilename)
     # if .tdms already exsit, delet it first
     if os.path.isfile(tdms_index_fn):
         try:
             os.remove(tdms_index_fn)
         except:
             pass
-
-
 
     # -----------------------  读取临时文件数据到内存 ------------------------#
 
@@ -466,7 +464,6 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000,encodin
             hdfpath = hdfpath.decode('gbk')
         else:
             hdfpath = hdfpath.decode('utf-8')
-
 
     dstPath = hdfpath[:-4] + '.tdms'
     print(dstPath)
@@ -508,7 +505,8 @@ def trans_hdf_2_tdms(hdfpath, tdms_folder=None, data_batch_size=10000000,encodin
 
     return dstPath
 
-def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000,encoding='utf-8'):
+
+def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000, encoding='utf-8'):
     """
 
 
@@ -530,8 +528,8 @@ def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
         DESCRIPTION.
         """
     version = 'dll_convert_hdf_v4.dll'
-    if encoding=='utf8':
-        encoding='utf-8'
+    if encoding == 'utf8':
+        encoding = 'utf-8'
     # ---------------------------数据格式check---------------------------------#
     # try:
     #     hdfpath = os.unicode(hdfpath, 'utf-8') # 经过编码处理
@@ -546,7 +544,7 @@ def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
 
     if type(hdfpath) == str:
         hdfpath_ = '\\'.join(hdfpath.split('/'))
-        if encoding=='gbk':
+        if encoding == 'gbk':
             hdfpath_ = hdfpath_.encode('gbk')
         else:
             hdfpath_ = hdfpath_.encode('utf-8')
@@ -570,7 +568,7 @@ def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
     ifn = ctypes.create_string_buffer(len_ifn)
     ifn.raw = hdfpath_
     print('3')
-    print('hdfpath_:',hdfpath_)
+    print('hdfpath_:', hdfpath_)
     # 输出 char path_out[], # C语言类型为文件路径输入端分配内存
     len_ofn = len_ifn
     ofn = ctypes.create_string_buffer(len_ofn)
@@ -615,17 +613,15 @@ def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
     else:
         srcfilename = filename.decode('utf-8')
 
-    tdms_index_fn=srcfilename[:-4]+'tdms_index'
+    tdms_index_fn = srcfilename[:-4] + 'tdms_index'
 
-    print('srcfilename:',srcfilename)
+    print('srcfilename:', srcfilename)
     # if .tdms already exsit, delet it first
     if os.path.isfile(tdms_index_fn):
         try:
             os.remove(tdms_index_fn)
         except:
             pass
-
-
 
     # -----------------------  读取临时文件数据到内存 ------------------------#
 
@@ -637,7 +633,6 @@ def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
             hdfpath = hdfpath.decode('gbk')
         else:
             hdfpath = hdfpath.decode('utf-8')
-
 
     dstPath = hdfpath[:-4] + '.tdms'
     print(dstPath)
@@ -679,7 +674,8 @@ def _trans_hdf_2_tdms_v4(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
 
     return dstPath
 
-def _trans_hdf_2_tdms_v3(hdfpath, tdms_folder=None, data_batch_size=10000000,encoding='utf-8'):
+
+def _trans_hdf_2_tdms_v3(hdfpath, tdms_folder=None, data_batch_size=10000000, encoding='utf-8'):
     """
     this is a back for 'dll_convert_hdf_v3.dll' files
 
@@ -709,7 +705,7 @@ def _trans_hdf_2_tdms_v3(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
 
     if type(hdfpath) == str:
         hdfpath_ = '\\'.join(hdfpath.split('/'))
-        hdfpath_ = hdfpath_.encode('utf-8')     # dll v3 version use utf-8 as input bytes string
+        hdfpath_ = hdfpath_.encode('utf-8')  # dll v3 version use utf-8 as input bytes string
 
     # -------------------------- 动态链接库调用--------------------------------#
     # 加载dll动态链接库函数
@@ -725,7 +721,7 @@ def _trans_hdf_2_tdms_v3(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
     len_ifn = len(hdfpath_) + 512  # 输入 char source_input[] C语言类型
     ifn = ctypes.create_string_buffer(len_ifn)
     ifn.raw = hdfpath_
-    print('hdfpath_:',hdfpath_)
+    print('hdfpath_:', hdfpath_)
     # 输出 char path_out[], # C语言类型为文件路径输入端分配内存
     len_ofn = len_ifn
     ofn = ctypes.create_string_buffer(len_ofn)
@@ -758,7 +754,7 @@ def _trans_hdf_2_tdms_v3(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
     # print("filename.decode('utf-8'):",filename)
 
     srcfilename = filename.decode('utf-8')
-    print('srcfilename:',srcfilename)
+    print('srcfilename:', srcfilename)
 
     # 保存的tdms文件路径
     dstPath = hdfpath[:-4] + '.tdms'
@@ -791,7 +787,7 @@ def _trans_hdf_2_tdms_v3(hdfpath, tdms_folder=None, data_batch_size=10000000,enc
             try:
                 shutil.copy(dstPath, tdms_folder)
                 os.remove(dstPath)
-                fp,fn = os.path.split(dstPath)
+                fp, fn = os.path.split(dstPath)
                 dstPath = tdms_folder + '/' + fn
             except IOError as e:
                 print("Unable to copy file. %s" % e)
@@ -834,9 +830,9 @@ def trans_hdf_2_h5_file(hdf_path, h5_path=None, keep_tdms=False):
         try:
             os.remove(tdmsFileInst)
         except IOError as e:
-            pass
+            print('io error')
         except:
-            pass
+            print('remove error')
 
     # try:
     #     os.remove(tdmsFileInst)
@@ -906,8 +902,158 @@ def test():
         x = trans_hdf_2_h5_file(path)
 
 
+def _has_start_of_data(fr, st_of_data=65536, inc_chunk=65536):
+    """
+
+    Parameters
+    ----------
+    fr: file instance
+        file instance
+    st_of_data: int
+        the start of head file raw data, before is header of the file
+
+    Returns
+    -------
+
+    """
+
+    start_of_data_key = b'start of data:'
+    start_of_data_flag = False
+    start_of_data_int = 0
+    
+    EOF_Flag = False
+    st_of_data = int(st_of_data)
+    if st_of_data <= 0:
+        raise ValueError('input parameter is error, need a value bigger than zero')
+    if st_of_data <= 2000:
+        st_of_data = 2000
+
+    if inc_chunk<= 2000:
+        inc_chunk = 2000
+
+
+    while not EOF_Flag:
+
+        bytes_blk = fr.read(st_of_data)
+
+        if len(bytes_blk) == st_of_data:
+            EOF_Flag = False
+        else:
+            EOF_Flag = True
+
+        if start_of_data_key in bytes_blk:
+            idx_start = bytes_blk.index(start_of_data_key)
+            if b'\r\n' in bytes_blk[idx_start:]:
+                idx_range = bytes_blk[idx_start:].index(b'\r\n')
+                start_of_data_content = bytes_blk[idx_start:idx_start + idx_range]
+                start_of_data_str = start_of_data_content.decode('utf-8')
+
+                start_of_data_str = start_of_data_str[len('start of data:'):].lstrip().rstrip('\r')
+                start_of_data_int = int(start_of_data_str)
+                start_of_data_flag = True
+                return start_of_data_int, start_of_data_flag
+            else:
+                seek_point = st_of_data - 1000 if (st_of_data - 1000>= 0) else 0
+                fr.seek(seek_point)
+                st_of_data = inc_chunk
+        else:
+            seek_point = st_of_data - 1000 if (st_of_data - 1000 >= 0) else 0
+            fr.seek(seek_point)
+            st_of_data = inc_chunk
+
+    return start_of_data_int, start_of_data_flag
+
+
+def revise_hdf_file_ch_order(hdf_filepath):
+    fr = open(hdf_filepath, 'rb')
+    fw = open(hdf_filepath[:-4] + '_new.hdf', 'wb')
+
+    st_of_data_init = 65536
+    st_of_data = _has_start_of_data(fr, st_of_data_init)
+
+    contenxt = fr.read(st_of_data_init)
+
+    # print(type(contenxt))
+    print(len(contenxt))
+    str_context = contenxt[:65000].decode('gbk')
+    print(len(str_context))
+    new_list = []
+    str_context_new = ''
+    for i, line in enumerate(str_context.split('\n')):
+
+        # check the 'start of data:' key value, normal is 65536
+        if 'start of data:' in line:
+            st_of_data = int(line[len('start of data:') + 1:])
+            st_of_data = int(st_of_data)
+            if st_of_data == 65536:
+                pass
+            else:
+                fr.seek(0)
+                fr.read(st_of_data)
+                pass
+
+            print(st_of_data)
+
+        # check the 'ch order:' key value, normal is 65536
+        if ('ch order: ' in line) and ('..' not in line):
+            pass
+            return
+
+        elif 'ch order: ' in line and ('..' in line):
+            ch_datsets = line.split(',')
+            ch_datsets = [x.lstrip("'").rstrip('\r') for x in ch_datsets]
+
+            for j, ele in enumerate(ch_datsets):
+                if '..' in ele:
+                    before_ele = ch_datsets[j - 1]
+                    after_ele = ch_datsets[j + 1]
+                    before_ele_real = int(before_ele)
+                    after_ele_real = int(after_ele)
+                    add_ele = list(range(before_ele_real + 1, after_ele_real))
+                    # repalce_ele = ','.join(add_ele)
+                    # print(repalce_ele)
+
+                    # print(ch_datsets)
+                    # print(ch_datsets[0])
+
+                    new_list = new_list + [str(x) for x in add_ele]
+                else:
+
+                    new_list.append(ele)
+
+            line_new_str = ','.join(new_list)
+
+            str_context_new = str_context_new + line_new_str + '\r\n'
+        else:
+            str_context_new = str_context_new + line
+            # print(line)
+
+    print('str_context_new:', str_context_new)
+
+    head_context = str_context_new.encode('gbk')
+    print(len(head_context))
+
+    if len(head_context) > 65000:
+
+        head_context = head_context[:65000]
+    elif len(head_context) <= 65000:
+        head_context = head_context + b'\t' * (65000 - len(head_context))
+
+    print(len(head_context))
+
+    fw.write(head_context)
+
+    # copy the data context from 65000:end
+    data_context = fr.read()
+    fw.write(data_context)
+
+    fr.close()
+    fw.close()
+    return str_context_new
+
+
 if __name__ == '__main__':
-    run_code = 1
+    run_code = 4
 
     if run_code == 1:
         # hdf_file = r'E:\01_SQL\AAAWORK\database\2020-07-23_B89-001 P ohneAC CS_02.hdf'
@@ -915,10 +1061,36 @@ if __name__ == '__main__':
         hdf_file = r'E:\h5_files\2017-03-31_D65 F4 VZ run02.hdf'
         hdf_file = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
         hdf_file = r'E:/h5_files/2020_test_中文13打飞机0.hdf'
-        hdf_file =r'E:/h5_files/2017-03-31_D65 F4 VZ run02.hdf'
-        print('hdf_file:',hdf_file)
+        hdf_file2 = r'E:/h5_files/2017-03-31_D65 F4 VZ run02.hdf'
+        hdf_file1 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.hdf'
+        # hdf_file1_TDMS = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.tdms'
+        hdf_file2 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06_CAN.hdf'
+        hdf_file3 = r'E:\h5_files\bug_source_hdf_data\2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
+        print('hdf_file1:', hdf_file1)
 
         # trans_hdf_2_h5_file
         # _trans_hdf_2_tdms_v3(hdf_file)
-        _trans_hdf_2_tdms_v4(hdf_file,encoding='gbk')
-        # trans_hdf_2_h5_file(hdf_file)
+        # _trans_hdf_2_tdms_v4(hdf_file,encoding='gbk')
+        trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
+        print('*' * 10)
+        trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
+        print('*' * 10)
+        _trans_hdf_2_tdms_v3(hdf_file3)
+        # trans_hdf_2_h5_file(hdf_file3, keep_tdms=True)
+        print('*' * 10)
+        trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
+        print('*' * 10)
+
+        # trans_hdf_2_tdms(hdf_file1)
+        # trans_hdf_2_tdms(hdf_file2)
+
+
+    elif run_code == 3:
+
+        hdf_file2 = r'E:\h5_files\test2\AE2-410 D 10-100 VZ RUN06_1.0_7.8s.hdf'
+        trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
+
+
+    elif run_code == 4:
+        file_path = r'E:\h5_files\bug_source_hdf_data/2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
+        x = revise_hdf_file_ch_order(file_path)

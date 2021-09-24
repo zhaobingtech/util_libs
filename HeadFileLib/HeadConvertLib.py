@@ -902,7 +902,7 @@ def test():
         x = trans_hdf_2_h5_file(path)
 
 
-def _has_start_of_data(fr, st_of_data=65536, inc_chunk=65536):
+def _has_key_start_of_data(fr, st_of_data=65536, inc_chunk=65536):
     """
 
     Parameters
@@ -920,7 +920,9 @@ def _has_start_of_data(fr, st_of_data=65536, inc_chunk=65536):
     start_of_data_key = b'start of data:'
     start_of_data_flag = False
     start_of_data_int = 0
-    
+
+    max_search_length = 63356 * 3
+
     EOF_Flag = False
     st_of_data = int(st_of_data)
     if st_of_data <= 0:
@@ -928,10 +930,11 @@ def _has_start_of_data(fr, st_of_data=65536, inc_chunk=65536):
     if st_of_data <= 2000:
         st_of_data = 2000
 
-    if inc_chunk<= 2000:
+    if inc_chunk <= 2000:
         inc_chunk = 2000
 
-
+    pos = fr.tell()
+    fr.seek(0)
     while not EOF_Flag:
 
         bytes_blk = fr.read(st_of_data)
@@ -951,9 +954,11 @@ def _has_start_of_data(fr, st_of_data=65536, inc_chunk=65536):
                 start_of_data_str = start_of_data_str[len('start of data:'):].lstrip().rstrip('\r')
                 start_of_data_int = int(start_of_data_str)
                 start_of_data_flag = True
-                return start_of_data_int, start_of_data_flag
+
+                fr.seek(pos)
+                return start_of_data_flag, start_of_data_int
             else:
-                seek_point = st_of_data - 1000 if (st_of_data - 1000>= 0) else 0
+                seek_point = st_of_data - 1000 if (st_of_data - 1000 >= 0) else 0
                 fr.seek(seek_point)
                 st_of_data = inc_chunk
         else:
@@ -961,136 +966,209 @@ def _has_start_of_data(fr, st_of_data=65536, inc_chunk=65536):
             fr.seek(seek_point)
             st_of_data = inc_chunk
 
-    return start_of_data_int, start_of_data_flag
+            if fr.tell() >= max_search_length:
+                break
+
+    fr.seek(pos)
+    return start_of_data_flag, start_of_data_int
+
+
+def _has_key_dot_dot(fr, file_header_bytes_size=65000):
+    """
+    check whether .hdf has a '..' element in header
+    Require file open as 'rb' mode, espcailly as binary mode
+
+    Parameters
+    ----------
+    fr : require that file open as 'rb' mode
+    file_header_bytes_size
+
+    Returns
+    -------
+
+    """
+
+    dot_dot_line_key = b'ch order:'
+    dot_dot_key = b'..'
+    dot_dot_flag = False
+    dot_dot_bytes = b''
+
+    pos = fr.tell()
+    fr.seek(0)
+    file_header_bytes_size = int(file_header_bytes_size)
+
+    if file_header_bytes_size <= 0:
+        raise ValueError('input parameter is error, need a value bigger than zero')
+    if file_header_bytes_size <= 2000:
+        file_header_bytes_size = 2000
+
+    pos = fr.tell()
+    fr.seek(0)
+    bytes_blk = fr.read(file_header_bytes_size)
+    if dot_dot_line_key in bytes_blk:
+        idx_start = bytes_blk.index(dot_dot_line_key)
+        if b'\r\n' in bytes_blk[idx_start:]:
+            try:
+                idx_range = bytes_blk[idx_start:].index(b'\r\n')
+            except:
+                print('Not right find the ch order header infomation')
+                dot_dot_flag = False
+
+                fr.seek(pos)
+                return dot_dot_flag, dot_dot_bytes
+            dot_dot_bytes = bytes_blk[idx_start:idx_start + idx_range]
+            if dot_dot_key in dot_dot_bytes:
+                dot_dot_flag = True
+
+            fr.seek(pos)
+            return dot_dot_flag, dot_dot_bytes
+        else:
+            dot_dot_flag = False
+    else:
+        dot_dot_flag = False
+
+    fr.seek(pos)
+    return dot_dot_flag, dot_dot_bytes
+
+
+def search_list_element_index_s(ls, element):
+    idx_ls = []
+    idx_scale = -1
+    step = -1
+
+    for _e_ in ls:
+        try:
+            idx_scale_tmp = ls[step + 1:].index(element)
+        except:
+            break
+
+        step = step + idx_scale_tmp + 1
+        idx_scale = step
+        idx_ls.append(idx_scale)
+
+    return idx_ls
 
 
 def revise_hdf_file_ch_order(hdf_filepath):
-    fr = open(hdf_filepath, 'rb')
-    fw = open(hdf_filepath[:-4] + '_new.hdf', 'wb')
+    revise_flag = False
+    with open(file_path, 'rb') as f:
 
-    st_of_data_init = 65536
-    st_of_data = _has_start_of_data(fr, st_of_data_init)
+        start_flag, start_bytes = _has_key_start_of_data(f, 65536)
 
-    contenxt = fr.read(st_of_data_init)
-
-    # print(type(contenxt))
-    print(len(contenxt))
-    str_context = contenxt[:65000].decode('gbk')
-    print(len(str_context))
-    new_list = []
-    str_context_new = ''
-    for i, line in enumerate(str_context.split('\n')):
-
-        # check the 'start of data:' key value, normal is 65536
-        if 'start of data:' in line:
-            st_of_data = int(line[len('start of data:') + 1:])
-            st_of_data = int(st_of_data)
-            if st_of_data == 65536:
-                pass
-            else:
-                fr.seek(0)
-                fr.read(st_of_data)
-                pass
-
-            print(st_of_data)
-
-        # check the 'ch order:' key value, normal is 65536
-        if ('ch order: ' in line) and ('..' not in line):
-            pass
-            return
-
-        elif 'ch order: ' in line and ('..' in line):
-            ch_datsets = line.split(',')
-            ch_datsets = [x.lstrip("'").rstrip('\r') for x in ch_datsets]
-
-            for j, ele in enumerate(ch_datsets):
-                if '..' in ele:
-                    before_ele = ch_datsets[j - 1]
-                    after_ele = ch_datsets[j + 1]
-                    before_ele_real = int(before_ele)
-                    after_ele_real = int(after_ele)
-                    add_ele = list(range(before_ele_real + 1, after_ele_real))
-                    # repalce_ele = ','.join(add_ele)
-                    # print(repalce_ele)
-
-                    # print(ch_datsets)
-                    # print(ch_datsets[0])
-
-                    new_list = new_list + [str(x) for x in add_ele]
-                else:
-
-                    new_list.append(ele)
-
-            line_new_str = ','.join(new_list)
-
-            str_context_new = str_context_new + line_new_str + '\r\n'
+        if start_flag is True:
+            header_length = start_bytes
         else:
-            str_context_new = str_context_new + line
-            # print(line)
+            header_length = 65536
 
-    print('str_context_new:', str_context_new)
+        margin_length = 150
+        part1_length = header_length - margin_length
 
-    head_context = str_context_new.encode('gbk')
-    print(len(head_context))
+        dot_dot_flag, dot_dot_bytes = _has_key_dot_dot(f, part1_length)
 
-    if len(head_context) > 65000:
+    if dot_dot_flag is False:
+        return revise_flag
 
-        head_context = head_context[:65000]
-    elif len(head_context) <= 65000:
-        head_context = head_context + b'\t' * (65000 - len(head_context))
+    new_chn_order_byte = reformat_dot_dot(dot_dot_bytes)
 
-    print(len(head_context))
+    fr = open(hdf_filepath, 'rb')
+    fr.read(part1_length)
+    fw = open(hdf_filepath[:-4] + '_new.hdf', 'wb')
+    if len(new_chn_order_byte) <= part1_length:
+        new_chn_order_byte = new_chn_order_byte + b'\t' * (part1_length - len(new_chn_order_byte))
+    else:
+        new_chn_order_byte = new_chn_order_byte[:part1_length]
+        fw.write(new_chn_order_byte)
 
-    fw.write(head_context)
+        # copy the data context from part1_length_end:end
+        data_context = fr.read()
+        fw.write(data_context)
 
-    # copy the data context from 65000:end
-    data_context = fr.read()
-    fw.write(data_context)
+        fr.close()
+        fw.close()
+        revise_flag = True
+        return revise_flag
 
-    fr.close()
-    fw.close()
-    return str_context_new
+    def reformat_dot_dot(dot_dot_bytes):
+        dot_dot_str = dot_dot_bytes.decode()
+        ch_order_ls = dot_dot_str.split(',')
+        idx_ls = search_list_element_index_s(ch_order_ls, '..')
+        add_con_ls = []
+        for idx in idx_ls:
+            former = ch_order_ls[idx - 1]
+            after = ch_order_ls[idx + 1]
+            former_ls = former.split('*')
+            after_ls = after.split('*')
+
+            former_chn_seq = former_ls[-1]
+            former_mul_factor = former_ls[0] if len(former_ls) == 2 else ''
+            after_chn_seq = after_ls[-1]
+            after_mul_factor = after_ls[0] if len(after_ls) == 2 else ''
+            former_chn_seq = int(former_chn_seq)
+            after_chn_seq = int(after_chn_seq)
+            ls_tmp_ = list(range(former_chn_seq + 1, after_chn_seq))
+
+            if former_mul_factor == '':
+                ls_tmp = [str(x) for x in ls_tmp_]
+            else:
+                ls_tmp = [former_mul_factor + '*' + str(x) for x in ls_tmp_]
+
+            add_temp = ','.join(ls_tmp)
+            add_con_ls.append(add_temp)
+        for i, idx in enumerate(idx_ls):
+            ch_order_ls[idx] = add_con_ls[i]
+        print(add_con_ls)
+        print(ch_order_ls)
+        chr_order_str = ','.join(ch_order_ls)
+        chr_order_byte = chr_order_str.encode()
+        new_chn_line = chr_order_byte
+        return new_chn_line
+
+    if __name__ == '__main__':
+        run_code = 5
+
+        if run_code == 1:
+            # hdf_file = r'E:\01_SQL\AAAWORK\database\2020-07-23_B89-001 P ohneAC CS_02.hdf'
+
+            hdf_file = r'E:\h5_files\2017-03-31_D65 F4 VZ run02.hdf'
+            hdf_file = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
+            hdf_file = r'E:/h5_files/2020_test_中文13打飞机0.hdf'
+            hdf_file2 = r'E:/h5_files/2017-03-31_D65 F4 VZ run02.hdf'
+            hdf_file1 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.hdf'
+            # hdf_file1_TDMS = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.tdms'
+            hdf_file2 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06_CAN.hdf'
+            hdf_file3 = r'E:\h5_files\bug_source_hdf_data\2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
+            print('hdf_file1:', hdf_file1)
+
+            # trans_hdf_2_h5_file
+            # _trans_hdf_2_tdms_v3(hdf_file)
+            # _trans_hdf_2_tdms_v4(hdf_file,encoding='gbk')
+            trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
+            print('*' * 10)
+            trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
+            print('*' * 10)
+            _trans_hdf_2_tdms_v3(hdf_file3)
+            # trans_hdf_2_h5_file(hdf_file3, keep_tdms=True)
+            print('*' * 10)
+            trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
+            print('*' * 10)
+
+            # trans_hdf_2_tdms(hdf_file1)
+            # trans_hdf_2_tdms(hdf_file2)
 
 
-if __name__ == '__main__':
-    run_code = 4
+        elif run_code == 3:
 
-    if run_code == 1:
-        # hdf_file = r'E:\01_SQL\AAAWORK\database\2020-07-23_B89-001 P ohneAC CS_02.hdf'
-
-        hdf_file = r'E:\h5_files\2017-03-31_D65 F4 VZ run02.hdf'
-        hdf_file = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
-        hdf_file = r'E:/h5_files/2020_test_中文13打飞机0.hdf'
-        hdf_file2 = r'E:/h5_files/2017-03-31_D65 F4 VZ run02.hdf'
-        hdf_file1 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.hdf'
-        # hdf_file1_TDMS = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.tdms'
-        hdf_file2 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06_CAN.hdf'
-        hdf_file3 = r'E:\h5_files\bug_source_hdf_data\2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
-        print('hdf_file1:', hdf_file1)
-
-        # trans_hdf_2_h5_file
-        # _trans_hdf_2_tdms_v3(hdf_file)
-        # _trans_hdf_2_tdms_v4(hdf_file,encoding='gbk')
-        trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
-        print('*' * 10)
-        trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
-        print('*' * 10)
-        _trans_hdf_2_tdms_v3(hdf_file3)
-        # trans_hdf_2_h5_file(hdf_file3, keep_tdms=True)
-        print('*' * 10)
-        trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
-        print('*' * 10)
-
-        # trans_hdf_2_tdms(hdf_file1)
-        # trans_hdf_2_tdms(hdf_file2)
+            hdf_file2 = r'E:\h5_files\test2\AE2-410 D 10-100 VZ RUN06_1.0_7.8s.hdf'
+            trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
 
 
-    elif run_code == 3:
+        elif run_code == 4:
+            file_path = r'E:\h5_files\bug_source_hdf_data/2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
+            x = revise_hdf_file_ch_order(file_path)
 
-        hdf_file2 = r'E:\h5_files\test2\AE2-410 D 10-100 VZ RUN06_1.0_7.8s.hdf'
-        trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
 
-
-    elif run_code == 4:
-        file_path = r'E:\h5_files\bug_source_hdf_data/2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
-        x = revise_hdf_file_ch_order(file_path)
+        elif run_code == 5:
+            file_path = r'E:\h5_files\bug_source_hdf_data/2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
+            # file_path = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
+            status = revise_hdf_file_ch_order(file_path)
+            print(status)

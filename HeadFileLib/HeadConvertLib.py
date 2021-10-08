@@ -4,7 +4,13 @@
 Scope:
     1.Convert hdf to raw data that python can read
     
-Update: 
+Update:
+2021-09-26:
+    1. update the function "revise_hdf_file_ch_order(hdf_filepath)", that function can revise the hdf file read bug
+        Bug root cause : if record device has too many channels, the head file will use the dot dot (..)
+        to represent the channels , like below:
+        ch order:    16*1,16*2,16*3,16*4,16*5,16*6,16*7,16*8,16*9,16*10,16*11,
+        16*12,16*13,16*14,16*15,16*16,16*17,16*18,16*19,16*20,21,..,25
 2021-05-28: 
     1.  update the output of HeadFile._read_hdf() function , Param:rawMetaData , 
         it will convenient for python save data to hdf in some cases.
@@ -13,7 +19,7 @@ Update:
         before read from tdms
 
 @author: Zhao Bing
-
+@Email: zhaobingtech@163.com
 Created on Mon Jan  4 12:41:33 2021
 Version 4
 
@@ -308,6 +314,18 @@ class Waveform:
         self.x_name = []
         self.x_offset = []
         self.x_unit = []
+        return
+
+
+class Waveform_2:
+
+    # time_start = []
+    def __init__(self):
+        self.data = []
+        self.increment = int(1)
+        self.start_time = 0
+        self.attrs = dict()
+        self.attrs['unit'] = ''
         return
 
 
@@ -904,11 +922,12 @@ def test():
 
 def _has_key_start_of_data(fr, st_of_data=65536, inc_chunk=65536):
     """
+    Check the .hdf file whether has the start of data information in header
 
     Parameters
     ----------
     fr: file instance
-        file instance
+        file instance,must need read by 'rb' mode
     st_of_data: int
         the start of head file raw data, before is header of the file
 
@@ -1032,6 +1051,20 @@ def _has_key_dot_dot(fr, file_header_bytes_size=65000):
 
 
 def search_list_element_index_s(ls, element):
+    """
+    Search the demand element index in list
+    Parameters
+    ----------
+    ls: list
+        the list that to be searched
+    element
+
+    Returns
+    -------
+    index_list: list
+        the demand element index list,
+        if no demand element , return []
+    """
     idx_ls = []
     idx_scale = -1
     step = -1
@@ -1047,6 +1080,42 @@ def search_list_element_index_s(ls, element):
         idx_ls.append(idx_scale)
 
     return idx_ls
+
+
+def reformat_dot_dot(dot_dot_bytes):
+    dot_dot_str = dot_dot_bytes.decode()
+    ch_order_ls = dot_dot_str.split(',')
+    idx_ls = search_list_element_index_s(ch_order_ls, '..')
+    add_con_ls = []
+    for idx in idx_ls:
+        former = ch_order_ls[idx - 1]
+        after = ch_order_ls[idx + 1]
+        former_ls = former.split('*')
+        after_ls = after.split('*')
+
+        former_chn_seq = former_ls[-1]
+        former_mul_factor = former_ls[0] if len(former_ls) == 2 else ''
+        after_chn_seq = after_ls[-1]
+        after_mul_factor = after_ls[0] if len(after_ls) == 2 else ''
+        former_chn_seq = int(former_chn_seq)
+        after_chn_seq = int(after_chn_seq)
+        ls_tmp_ = list(range(former_chn_seq + 1, after_chn_seq))
+
+        if former_mul_factor == '':
+            ls_tmp = [str(x) for x in ls_tmp_]
+        else:
+            ls_tmp = [former_mul_factor + '*' + str(x) for x in ls_tmp_]
+
+        add_temp = ','.join(ls_tmp)
+        add_con_ls.append(add_temp)
+    for i, idx in enumerate(idx_ls):
+        ch_order_ls[idx] = add_con_ls[i]
+    print(add_con_ls)
+    print(ch_order_ls)
+    chr_order_str = ','.join(ch_order_ls)
+    chr_order_byte = chr_order_str.encode()
+    new_chn_line = chr_order_byte
+    return new_chn_line
 
 
 def revise_hdf_file_ch_order(hdf_filepath):
@@ -1088,87 +1157,53 @@ def revise_hdf_file_ch_order(hdf_filepath):
         revise_flag = True
         return revise_flag
 
-    def reformat_dot_dot(dot_dot_bytes):
-        dot_dot_str = dot_dot_bytes.decode()
-        ch_order_ls = dot_dot_str.split(',')
-        idx_ls = search_list_element_index_s(ch_order_ls, '..')
-        add_con_ls = []
-        for idx in idx_ls:
-            former = ch_order_ls[idx - 1]
-            after = ch_order_ls[idx + 1]
-            former_ls = former.split('*')
-            after_ls = after.split('*')
 
-            former_chn_seq = former_ls[-1]
-            former_mul_factor = former_ls[0] if len(former_ls) == 2 else ''
-            after_chn_seq = after_ls[-1]
-            after_mul_factor = after_ls[0] if len(after_ls) == 2 else ''
-            former_chn_seq = int(former_chn_seq)
-            after_chn_seq = int(after_chn_seq)
-            ls_tmp_ = list(range(former_chn_seq + 1, after_chn_seq))
+if __name__ == '__main__':
+    run_code = 5
 
-            if former_mul_factor == '':
-                ls_tmp = [str(x) for x in ls_tmp_]
-            else:
-                ls_tmp = [former_mul_factor + '*' + str(x) for x in ls_tmp_]
+    if run_code == 1:
+        # hdf_file = r'E:\01_SQL\AAAWORK\database\2020-07-23_B89-001 P ohneAC CS_02.hdf'
 
-            add_temp = ','.join(ls_tmp)
-            add_con_ls.append(add_temp)
-        for i, idx in enumerate(idx_ls):
-            ch_order_ls[idx] = add_con_ls[i]
-        print(add_con_ls)
-        print(ch_order_ls)
-        chr_order_str = ','.join(ch_order_ls)
-        chr_order_byte = chr_order_str.encode()
-        new_chn_line = chr_order_byte
-        return new_chn_line
+        hdf_file = r'E:\h5_files\2017-03-31_D65 F4 VZ run02.hdf'
+        hdf_file = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
+        hdf_file = r'E:/h5_files/2020_test_中文13打飞机0.hdf'
+        hdf_file2 = r'E:/h5_files/2017-03-31_D65 F4 VZ run02.hdf'
+        hdf_file1 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.hdf'
+        # hdf_file1_TDMS = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.tdms'
+        hdf_file2 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06_CAN.hdf'
+        hdf_file3 = r'E:\h5_files\bug_source_hdf_data\2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
+        print('hdf_file1:', hdf_file1)
 
-    if __name__ == '__main__':
-        run_code = 5
+        # trans_hdf_2_h5_file
+        # _trans_hdf_2_tdms_v3(hdf_file)
+        # _trans_hdf_2_tdms_v4(hdf_file,encoding='gbk')
+        trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
+        print('*' * 10)
+        trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
+        print('*' * 10)
+        _trans_hdf_2_tdms_v3(hdf_file3)
+        # trans_hdf_2_h5_file(hdf_file3, keep_tdms=True)
+        print('*' * 10)
+        trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
+        print('*' * 10)
 
-        if run_code == 1:
-            # hdf_file = r'E:\01_SQL\AAAWORK\database\2020-07-23_B89-001 P ohneAC CS_02.hdf'
-
-            hdf_file = r'E:\h5_files\2017-03-31_D65 F4 VZ run02.hdf'
-            hdf_file = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
-            hdf_file = r'E:/h5_files/2020_test_中文13打飞机0.hdf'
-            hdf_file2 = r'E:/h5_files/2017-03-31_D65 F4 VZ run02.hdf'
-            hdf_file1 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.hdf'
-            # hdf_file1_TDMS = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06.tdms'
-            hdf_file2 = r'E:/h5_files/2021-03-03_B SUV_BC8-418_(N)G3 VZ_B SUV BC8418 engine absorb acousticground run06_CAN.hdf'
-            hdf_file3 = r'E:\h5_files\bug_source_hdf_data\2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
-            print('hdf_file1:', hdf_file1)
-
-            # trans_hdf_2_h5_file
-            # _trans_hdf_2_tdms_v3(hdf_file)
-            # _trans_hdf_2_tdms_v4(hdf_file,encoding='gbk')
-            trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
-            print('*' * 10)
-            trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
-            print('*' * 10)
-            _trans_hdf_2_tdms_v3(hdf_file3)
-            # trans_hdf_2_h5_file(hdf_file3, keep_tdms=True)
-            print('*' * 10)
-            trans_hdf_2_h5_file(hdf_file1, keep_tdms=True)
-            print('*' * 10)
-
-            # trans_hdf_2_tdms(hdf_file1)
-            # trans_hdf_2_tdms(hdf_file2)
+        # trans_hdf_2_tdms(hdf_file1)
+        # trans_hdf_2_tdms(hdf_file2)
 
 
-        elif run_code == 3:
+    elif run_code == 3:
 
-            hdf_file2 = r'E:\h5_files\test2\AE2-410 D 10-100 VZ RUN06_1.0_7.8s.hdf'
-            trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
-
-
-        elif run_code == 4:
-            file_path = r'E:\h5_files\bug_source_hdf_data/2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
-            x = revise_hdf_file_ch_order(file_path)
+        hdf_file2 = r'E:\h5_files\test2\AE2-410 D 10-100 VZ RUN06_1.0_7.8s.hdf'
+        trans_hdf_2_h5_file(hdf_file2, keep_tdms=True)
 
 
-        elif run_code == 5:
-            file_path = r'E:\h5_files\bug_source_hdf_data/2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
-            # file_path = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
-            status = revise_hdf_file_ch_order(file_path)
-            print(status)
+    elif run_code == 4:
+        file_path = r'E:\h5_files\bug_source_hdf_data/2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
+        x = revise_hdf_file_ch_order(file_path)
+
+
+    elif run_code == 5:
+        file_path = r'E:\h5_files\bug_source_hdf_data/2021-01-26_Tiguan L_A9R-926_(N)G5 VZ_A9R-926 Aus F4 VZ_202_CAN.hdf'
+        # file_path = r'E:/h5_files/2018-08-13_T cross waf 1.4 F3 Mit ac vz10 ( 0.00-11.24 s).1.hdf'
+        status = revise_hdf_file_ch_order(file_path)
+        print(status)

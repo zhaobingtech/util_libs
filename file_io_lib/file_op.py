@@ -45,24 +45,29 @@ def get_filenames(folder_path,filetype,subFoder='False'):
     filename = []
     path_file_name=[]
     size=[]
+
+    if filetype[0] != '.':
+        filetype = '.'+ filetype
     
     for roots,dirs,files in os.walk(folder_path):
         
         # roots 是输入的folder,dirs 是包含的子文件夹，files是文件名称
         # 每次循环得到的结果
         # item1 root D:\Python\02_City_Road_Analysis\原始文件 dirs ['中文'] files ['test1.hdf', '中文_英文——1223_2 - 副本.hdf']
-        # item2 root D:\Python\02_City_Road_Analysis\原始文件\中文 dirs [] files ['test.tdms', 'test.tdms_index', '中文.tdms', '中文_英文——1223_!2.hdf', '中文_英文——1223_2.hdf']
-        
+        # item2 root D:\Python\02_City_Road_Analysis\原始文件\中文 dirs [] files
+        # ['test.tdms', 'test.tdms_index', '中文.tdms', '中文_英文——1223_!2.hdf', '中文_英文——1223_2.hdf']
+
         # if subFolder == Fasle 并且 根路径不等于输入的路径 ,则跳出
         if subFoder=='False' and folder_path != roots:
-            break     
-        
+            break
+
         # 循环得到文件名，并且将文件路径与文件名拼接，得到一个带路径的列表
         for i in files:
             if os.path.splitext(i)[1]==filetype:
                 filename.append(i) # 添加文件名
                 pt_fn = roots +'\\'+ i
-                path_file_name.append(pt_fn) #添加路径名称
+
+                path_file_name.append(pt_fn) #添加路径名
     
         
     size = len(filename)    # 得到文件的长度
@@ -103,3 +108,15 @@ def mkdir(path):
 # folder="D:"
 # num,path,files=get_filenames(folder,'.csv')
 # print(files)
+
+
+if __name__ == '__main__':
+    # s=0
+    folder_path =r'E:/h5_files'
+    folder_path= 'E:/data_selected_02/hdf'
+
+    folder_path = '\\'.join(folder_path.split('/'))
+    print('folder_path:', folder_path.encode('gbk'))
+    _,file_path_s,_=get_filenames(folder_path,'hdf',subFoder=False)
+    s1=file_path_s[10]
+    print(s1)
